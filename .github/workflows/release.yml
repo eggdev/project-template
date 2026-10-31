@@ -1,6 +1,8 @@
 # Each merge to main with pending changesets is a release: a bot commit bumps the
-# version and writes CHANGELOG.md, then the job tags vX.Y.Z and publishes the
-# GitHub release with the clutch binaries. See docs/contributing/setup/releases.md.
+# version and writes CHANGELOG.md and .clutch/TRACKER.md, then the job tags
+# vX.Y.Z and publishes the GitHub release with the clutch binaries. A merge with
+# no changeset only regenerates the tracker. Pull requests never commit the
+# tracker, so they never conflict on it. See docs/contributing/setup/releases.md.
 name: Release
 
 on:
@@ -54,6 +56,13 @@ jobs:
       - name: Version and changelog
         id: release
         run: bun tools/release/release.ts "$RUNNER_TEMP/release-notes.md"
+      # The tracker comes from the issue files on main. In a project, tools/clutch.ts
+      # runs the clutch binary that mise installs.
+      - name: Regenerate the tracker
+        run: |
+          if [ -d .clutch/issues ]; then
+            bun tools/clutch.ts issues --write
+          fi
       # Before the tag, so a failed build publishes no release. Only Clutch has the CLI
       # source; a project's release has no binaries. See tools/release/binaries.ts.
       - name: Build the clutch binaries
@@ -70,9 +79,25 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add --all CHANGELOG.md package.json .changeset
+          [ -f .clutch/TRACKER.md ] && git add .clutch/TRACKER.md
           git commit --message "chore(release): v$VERSION"
           git tag "v$VERSION"
           # Atomic, so a refused push to main leaves no orphan tag either.
           git push --atomic "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main "v$VERSION"
           shopt -s nullglob
           gh release create "v$VERSION" --title "v$VERSION" --notes-file "$RUNNER_TEMP/release-notes.md" "$RUNNER_TEMP"/dist/*.tar.gz
+      # A merge with no changeset makes no release, but its issue changes still
+      # reach the tracker.
+      - name: Commit the tracker
+        if: steps.release.outputs.released != 'true'
+        env:
+          PUSH_TOKEN: ${{ steps.bot.outputs.token || github.token }}
+        run: |
+          if [ ! -f .clutch/TRACKER.md ] || git diff --quiet -- .clutch/TRACKER.md; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .clutch/TRACKER.md
+          git commit --message "chore(tracker): regenerate the tracker"
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main

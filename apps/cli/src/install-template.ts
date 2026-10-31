@@ -28,6 +28,19 @@ function mergeJson(project: string, template: string, keep?: (path: string) => b
 }
 
 /** How the merge rule combines the project's copy of a file with the template's, by file name. */
+/** Adds the template's lines that the project lacks, for line-based files such as .gitignore. */
+function mergeLines(project: string, template: string): Merged {
+  const own = new Set(project.split('\n').map((line) => line.trim()));
+  const missing = template
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#') && !own.has(line));
+  const content = missing.length
+    ? `${project}\n\n# From Clutch\n${missing.join('\n')}\n`
+    : `${project}\n`;
+  return { content, conflicts: [] };
+}
+
 export const mergers: Record<
   string,
   (project: string, template: string, keep?: (path: string) => boolean) => Merged
@@ -36,17 +49,8 @@ export const mergers: Record<
   // Agent hook configs. A project keeps its own hooks and settings, and gains the template's hooks.
   'settings.json': mergeJson,
   'hooks.json': mergeJson,
-  '.gitignore': (project, template) => {
-    const own = new Set(project.split('\n').map((line) => line.trim()));
-    const missing = template
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith('#') && !own.has(line));
-    const content = missing.length
-      ? `${project}\n\n# From Clutch\n${missing.join('\n')}\n`
-      : `${project}\n`;
-    return { content, conflicts: [] };
-  },
+  '.gitignore': mergeLines,
+  '.gitattributes': mergeLines,
 };
 
 const registryPath = 'docs/contributing/architecture/primitives.yaml';

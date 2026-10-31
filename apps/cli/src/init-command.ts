@@ -19,7 +19,8 @@ import { lineagePath, loadClutchSource } from '@/sync/source';
 const trackerReadme = `# Tracker
 
 One Markdown file per issue lives in \`issues/\`. \`TRACKER.md\` is generated from
-them by \`clutch issues --write\`. Edit the issue files, never \`TRACKER.md\`.
+them by \`clutch issues --write\`, which the release workflow runs on the default
+branch. Edit and commit the issue files, never \`TRACKER.md\`.
 File a new issue with \`clutch issues new\`. See
 \`.agents/skills/deliver/references/commands.md\` for every repeatable command.
 `;

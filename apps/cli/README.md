@@ -99,16 +99,19 @@ mise exec -- bun run clutch issues --check
 - `next` prints the first `todo` issue for an agent whose dependencies are
   done. With `--stack`, a dependency in review also counts, up to 3 stacked
   PRs. A `later` issue never comes next.
-- `set` changes the frontmatter of one issue, then rewrites
-  `.clutch/TRACKER.md`.
+- `set` changes the frontmatter of one issue. It leaves `.clutch/TRACKER.md`
+  alone: the release workflow regenerates it on the default branch, so a pull
+  request never commits it.
 - `new` fetches origin and writes a `todo` issue with the next free id. That
   id is one above the highest id in the phase's range, or in `--range`, across
   the working tree, each local branch and each `origin/*` branch. See
   `.clutch/README.md#commands`.
 - `--write` renders `.clutch/TRACKER.md` in the format that `format-check`
-  expects. Never edit that file by hand.
-- `--check` exits 2 when `.clutch/TRACKER.md` is stale, and 1 when an issue
-  file has a bad value. The message names the file and the field.
+  expects. The release workflow runs it on the default branch. Never edit that
+  file by hand, and never commit it in a pull request.
+- `--check` exits 1 when an issue file has a bad value. The message names the
+  file and the field. `--check --fresh` also exits 2 when
+  `.clutch/TRACKER.md` does not match the issue files.
 - `--json` prints the issues and the errors as JSON.
 
 ## Checks

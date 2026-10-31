@@ -32,11 +32,12 @@ function tracker() {
   });
 }
 
-test('--check fails until --write renders the tracker, then passes', async () => {
+test('--check needs only valid issue files, and --fresh also needs a current tracker', async () => {
   await using repo = await tracker();
-  expect(await clutch(repo.root, '--check')).toMatchObject({ code: 2 });
-  expect(await clutch(repo.root, '--write')).toMatchObject({ code: 0 });
   expect(await clutch(repo.root, '--check')).toMatchObject({ code: 0 });
+  expect(await clutch(repo.root, '--check', '--fresh')).toMatchObject({ code: 2 });
+  expect(await clutch(repo.root, '--write')).toMatchObject({ code: 0 });
+  expect(await clutch(repo.root, '--check', '--fresh')).toMatchObject({ code: 0 });
   const written = await readFile(path.join(repo.root, '.clutch/TRACKER.md'), 'utf-8');
   expect(written).toContain('| CL-002 | Issue CL-002 | review | CL-001     |     | agent |');
 });
@@ -49,7 +50,7 @@ test('a bad frontmatter value makes --check exit 1 and name the file and field',
   expect(result.stderr).toContain('.clutch/issues/CL-003.md: status: Expected one of');
 });
 
-test('next waits for review dependencies unless --stack, and set updates the file and tracker', async () => {
+test('next waits for review dependencies unless --stack, and set updates only the file', async () => {
   await using repo = await tracker();
   expect(await clutch(repo.root, 'next')).toMatchObject({
     code: 1,
@@ -65,6 +66,8 @@ test('next waits for review dependencies unless --stack, and set updates the fil
   expect(file).toBe(
     `---\nid: CL-002\ntitle: 'Issue CL-002'\nphase: P0\nstatus: done\ndepends_on: [CL-001]\npr: '${url}'\nowner: agent\n---\n\n# CL-002: Issue CL-002\n`,
   );
+  // The tracker is generated on the default branch, so set leaves it alone.
+  expect(await Bun.file(path.join(repo.root, '.clutch/TRACKER.md')).exists()).toBe(false);
   expect(await clutch(repo.root, '--check')).toMatchObject({ code: 0 });
   expect(await clutch(repo.root, 'next')).toMatchObject({
     stdout: expect.stringContaining('CL-003'),

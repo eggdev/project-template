@@ -84,9 +84,10 @@ async function conflicts(run: Run) {
 }
 
 /**
- * Rebases the PR's branch on its base. A conflict in the generated tracker is
- * resolved by regenerating it. Any other conflict stops, with the rebase left
- * in progress for the author to finish.
+ * Rebases the PR's branch on its base. A PR never commits the tracker, which
+ * the release generates on the default branch, so a conflict in it comes from
+ * an older branch: the base's copy wins. Any other conflict stops, with the
+ * rebase left in progress for the author to finish.
  */
 async function rebase(run: Run, branch: string, base: string) {
   const recorded = await run(['git', 'config', '--get', forkKey(branch)]);
@@ -116,7 +117,8 @@ async function rebase(run: Run, branch: string, base: string) {
         `The rebase stopped on ${other.join(', ') || 'an error'}. Resolve it, run git rebase --continue, then run pr sync again.\n${step.err || step.out}`,
       );
     }
-    await must(run, clutch('issues', '--write'));
+    // In a rebase, "ours" is the base that the commits are replayed onto.
+    await must(run, ['git', 'checkout', '--ours', '--', tracker]);
     await must(run, ['git', 'add', tracker]);
     step = await run(['git', '-c', 'core.editor=true', 'rebase', '--continue']);
   }
@@ -148,18 +150,6 @@ export async function sync(
   await rebase(run, pr.head, pr.base);
   // The branch now sits on the base's tip, the fork point for the next sync.
   await recordForkPoint(run, pr.head, pr.base);
-  const stale = await run(clutch('issues', '--check'));
-  if (!stale.ok) {
-    await must(run, clutch('issues', '--write'));
-    await must(run, ['git', 'add', tracker]);
-    await must(run, [
-      'git',
-      'commit',
-      '--quiet',
-      '--message',
-      'chore(tracker): regenerate the tracker',
-    ]);
-  }
   await must(run, ['bun', 'run', 'validate'], { inherit: true });
   const folder = await mkdtemp(path.join(tmpdir(), 'pr-sync-'));
   const body = path.join(folder, 'body.md');
@@ -169,7 +159,8 @@ export async function sync(
 
 /**
  * `pr ready`: the last commit of a green PR. It marks the issue done with the
- * PR's link, regenerates the tracker, commits and pushes.
+ * PR's link, commits only the issue file and pushes. The release regenerates
+ * the tracker on the default branch.
  */
 export async function ready(run: Run, root: string, id: string, number: string) {
   const pr = await view(run, number);
@@ -181,9 +172,16 @@ export async function ready(run: Run, root: string, id: string, number: string) 
     throw new Error(`Switch to ${pr.head}, the branch of #${pr.number}, first.`);
   }
   await must(run, clutch('issues', 'set', id, 'done', '--pr', pr.url));
-  await must(run, clutch('issues', '--write'));
-  await must(run, ['git', 'add', '.clutch']);
-  await must(run, ['git', 'commit', '--quiet', '--message', `chore(tracker): mark ${id} done`]);
+  await must(run, ['git', 'add', '.clutch/issues']);
+  await must(run, [
+    'git',
+    'commit',
+    '--quiet',
+    '--message',
+    `chore(tracker): mark ${id} done`,
+    '--',
+    '.clutch/issues',
+  ]);
   const pushed = await run(['git', 'push', 'origin', 'HEAD'], { inherit: true });
   if (!pushed.ok) {
     throw new Error('The push failed. Read the git output above.');

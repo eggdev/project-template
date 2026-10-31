@@ -11,7 +11,7 @@ import type { Issue, IssueError } from '@/issues/parse';
 import { renderTracker, trackerFile } from '@/issues/render';
 
 const usage =
-  'Usage: clutch issues [--write | --check] [--json]\n       clutch issues next [--stack] [--json]\n       clutch issues set <id> <status> [--pr URL] [--owner NAME]\n       clutch issues new --phase P --title TEXT [--depends CL-NNN,...] [--owner NAME] [--range CL-NNN..CL-NNN] [--json]';
+  'Usage: clutch issues [--write | --check [--fresh]] [--json]\n       clutch issues next [--stack] [--json]\n       clutch issues set <id> <status> [--pr URL] [--owner NAME]\n       clutch issues new --phase P --title TEXT [--depends CL-NNN,...] [--owner NAME] [--range CL-NNN..CL-NNN] [--json]';
 
 /** The repository that holds `cwd`, or `cwd` when it is not in one. */
 async function repoRoot(cwd: string) {
@@ -86,13 +86,21 @@ function printList(issues: Array<Issue>) {
   }
 }
 
-/** Reads the issues again after a change, and rewrites the tracker from them. */
-async function rewriteTracker(root: string) {
-  const updated = await readIssues(root);
-  if (updated.errors.length > 0) {
-    throw new Error(updated.errors.map(describe).join('\n'));
+/**
+ * `--check` passes when every issue file is valid, which `run` makes sure of
+ * first. The release generates the tracker on the default branch, so a pull
+ * request never has to bring it up to date. `--fresh` also requires the
+ * committed tracker to match the issue files.
+ */
+async function checkTracker(root: string, issues: Array<Issue>, fresh: boolean) {
+  if (!fresh) {
+    return 0;
   }
-  await writeFile(path.join(root, trackerFile), await tracker(root, updated.issues));
+  const current = (await readTracker(root)) === (await tracker(root, issues));
+  if (!current) {
+    console.error(`${trackerFile} is stale. Run: mise exec -- bun run clutch issues --write`);
+  }
+  return current ? 0 : 2;
 }
 
 async function run(args: Array<string>, cwd: string): Promise<number> {
@@ -102,6 +110,7 @@ async function run(args: Array<string>, cwd: string): Promise<number> {
     options: {
       write: { type: 'boolean' },
       check: { type: 'boolean' },
+      fresh: { type: 'boolean' },
       json: { type: 'boolean' },
       stack: { type: 'boolean' },
       pr: { type: 'string' },
@@ -136,18 +145,16 @@ async function run(args: Array<string>, cwd: string): Promise<number> {
   if (action === 'new' && rest.length === 0) {
     const created = await newIssue(root, values);
     await formatFile(root, created.file);
-    await rewriteTracker(root);
     console.log(
       values.json
         ? JSON.stringify({ schemaVersion: 1, ...created })
-        : `${created.id}  ${created.file}. ${trackerFile} is up to date.`,
+        : `${created.id}  ${created.file}`,
     );
     return 0;
   }
   if (action === 'set' && rest.length === 2) {
     await setIssue(root, issues, rest, values);
-    await rewriteTracker(root);
-    console.log(`${rest[0]} is ${rest[1]}. ${trackerFile} is up to date.`);
+    console.log(`${rest[0]} is ${rest[1]}.`);
     return 0;
   }
   if (action !== undefined) {
@@ -155,11 +162,7 @@ async function run(args: Array<string>, cwd: string): Promise<number> {
   }
 
   if (values.check) {
-    const fresh = (await readTracker(root)) === (await tracker(root, issues));
-    if (!fresh) {
-      console.error(`${trackerFile} is stale. Run: mise exec -- bun run clutch issues --write`);
-    }
-    return fresh ? 0 : 2;
+    return checkTracker(root, issues, values.fresh === true);
   }
   if (values.write) {
     await writeFile(path.join(root, trackerFile), await tracker(root, issues));

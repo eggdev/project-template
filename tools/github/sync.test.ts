@@ -38,7 +38,7 @@ const syncAnswers = (
     ['git diff --name-only --diff-filter=A', { out: '.changeset/x.md' }],
   ]);
 
-test('sync regenerates a conflicted tracker, validates and pushes with a lease', async () => {
+test('sync takes the base copy of a conflicted tracker, validates and pushes with a lease', async () => {
   const gh = syncAnswers([{ ok: false, err: 'CONFLICT' }], [{ out: '.clutch/TRACKER.md\n' }]);
   const logged: Array<string> = [];
   const original = console.log;
@@ -51,7 +51,7 @@ test('sync regenerates a conflicted tracker, validates and pushes with a lease',
   const order = [
     'git fetch --prune origin',
     'git rebase origin/main',
-    'bun tools/clutch.ts issues --write',
+    'git checkout --ours -- .clutch/TRACKER.md',
     'git add .clutch/TRACKER.md',
     'git -c core.editor=true rebase --continue',
     'bun run validate',
@@ -60,6 +60,7 @@ test('sync regenerates a conflicted tracker, validates and pushes with a lease',
   const positions = order.map((call) => gh.calls.indexOf(call));
   expect(positions.every((position) => position !== -1)).toBe(true);
   expect(positions).toEqual(positions.toSorted((a, b) => a - b));
+  expect(gh.calls).not.toContain('bun tools/clutch.ts issues --write');
   expect(logged).toContain('https://github.com/o/r/pull/7');
 });
 

@@ -132,7 +132,8 @@ test('the pr commands run in a project made by clutch init', async () => {
     git(dir, 'remote', 'add', 'origin', origin);
     git(dir, 'push', '--quiet', 'origin', 'main');
 
-    // The branch changes CL-002, and main moves on with CL-003, so only the tracker conflicts.
+    // An older branch that still committed the tracker changes CL-002, and main moves on
+    // with CL-003, so only the tracker conflicts. The base's copy wins.
     git(dir, 'switch', '--quiet', '-c', 'clutch/cl-002-thing');
     await writeFile(path.join(dir, '.clutch/issues/CL-002.md'), issue('CL-002', 'in_progress'));
     clutch('issues', '--write');
@@ -172,8 +173,9 @@ test('the pr commands run in a project made by clutch init', async () => {
     );
     const merged = await readFile(path.join(dir, '.clutch/TRACKER.md'), 'utf-8');
     expect(merged).not.toContain('<<<<<<<');
-    expect(merged).toMatch(/CL-002 .*in_progress/u);
+    // main's tracker, which the release generated. The PR does not regenerate it.
     expect(merged).toMatch(/CL-003 .*in_progress/u);
+    expect(merged).not.toMatch(/CL-002 .*in_progress/u);
     expect(clutch('issues', '--check')).toMatchObject({ code: 0 });
 
     expect(pr('ready', 'CL-002', '7')).toMatchObject({ code: 0 });
@@ -182,6 +184,9 @@ test('the pr commands run in a project made by clutch init', async () => {
     );
     expect(await readFile(path.join(dir, '.clutch/issues/CL-002.md'), 'utf-8')).toContain(
       `pr: '${pull.url}'`,
+    );
+    expect(git(dir, 'show', '--name-only', '--format=', 'HEAD').out.trim()).toBe(
+      '.clutch/issues/CL-002.md',
     );
 
     // GitHub reports the commit that ready pushed, so pr wait sees its own head.

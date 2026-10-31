@@ -51,12 +51,17 @@ earlier release commit. When changesets are pending, it does these steps:
 
 1. It writes the version and `CHANGELOG.md` with
    [`tools/release/release.ts`](../../../tools/release/release.ts).
-2. It commits them as `chore(release): vX.Y.Z` with the GitHub Actions bot.
-3. It tags `vX.Y.Z` and pushes the commit and the tag to `main`.
-4. It publishes a GitHub release with the changelog section as its notes and
+2. It regenerates `.clutch/TRACKER.md` from the issue files with
+   `clutch issues --write`.
+3. It commits them as `chore(release): vX.Y.Z` with the GitHub Actions bot.
+4. It tags `vX.Y.Z` and pushes the commit and the tag to `main`.
+5. It publishes a GitHub release with the changelog section as its notes and
    the `clutch` binaries.
 
-With no pending changesets, the workflow ends without a release. The push is
+With no pending changesets, the workflow makes no release. When the issue
+files changed the tracker, it commits `chore(tracker): regenerate the tracker`
+instead. Pull requests never commit the tracker, so two open PRs never conflict on it.
+A sync never has to push a tracker fix to an approved PR. The push is
 atomic, so a refused push to `main` leaves no tag behind.
 
 ## The release bot

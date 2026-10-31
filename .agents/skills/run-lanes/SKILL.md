@@ -28,9 +28,9 @@ each issue changes, not by topic.
    file another lane owns asks the coordinator first.
 4. Three lanes is a good start. More lanes mean more rebases on `main`.
 
-Shared generated files always conflict: `.clutch/TRACKER.md`, the changelog and
-release commits. That is expected. Lanes rebase and regenerate them, as the
-brief says.
+Lanes never commit `.clutch/TRACKER.md`: the release regenerates it on `main`
+with the changelog. Each PR commits only its own issue files, so the tracker
+never conflicts between lanes.
 
 ## 2. Reserve issue ids
 
@@ -69,11 +69,10 @@ in your own git worktree. Do the work yourself.
   Fill every section of the PR template. Conventional commits. Never `--no-verify`.
 - Run `mise exec -- bun run validate` before each push.
 - When the PR is green and ready, its last commit runs
-  `clutch issues set CL-NNN done --pr <url>` and `clutch issues --write`.
+  `bun run pr ready CL-NNN <number>`, which commits only the issue file.
 - Merge rules: see "Merge" below.
 - File new issues with `clutch issues new --range <your block>`.
-- Expect `.clutch/TRACKER.md` conflicts. Rebase on `origin/main`, run
-  `clutch issues --write`, and push with `pr open --force`.
+- Never commit `.clutch/TRACKER.md`. The release writes it on `main`.
 - <Known flakes, and what to do: rerun a failed job once before you debug.>
 
 ## Lane boundaries
@@ -121,8 +120,8 @@ Before a lane merges, it checks whether `main` moved since its last green run:
 
 1. Run `git fetch origin` and compare the PR's base with `origin/main`.
 2. When `main` moved, run `mise exec -- bun run pr sync` if the project's `pr`
-   tool has it. Otherwise rebase on `origin/main`, run `clutch issues --write`
-   and `validate`, and push with `pr open --force`.
+   tool has it. Otherwise rebase on `origin/main`, run `validate`, and push with
+   `pr open --force`.
 3. Wait for the new run to pass, then merge.
 
 When `main` turns red anyway, the coordinator names one lane to fix it, and the

@@ -1,0 +1,2 @@
+# The release generates the tracker on main from .clutch/issues. GitHub folds it in diffs.
+.clutch/TRACKER.md linguist-generated=true

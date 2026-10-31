@@ -204,7 +204,7 @@ test('merge reports a failed release, and a plain merge error that is not the st
   );
 });
 
-test('ready marks the issue done through tools/clutch.ts, commits and pushes', async () => {
+test('ready marks the issue done through tools/clutch.ts, and commits only the issue files', async () => {
   const gh = fake([
     [
       'gh pr view 7',
@@ -222,13 +222,14 @@ test('ready marks the issue done through tools/clutch.ts, commits and pushes', a
     ['git branch --show-current', { out: 'clutch/cl-117-pr-lifecycle\n' }],
   ]);
   expect(await runPr(['ready', 'CL-117', '7'], gh.run, noWrite)).toBe(0);
-  expect(gh.calls.slice(-5)).toEqual([
+  expect(gh.calls.slice(-4)).toEqual([
     'bun tools/clutch.ts issues set CL-117 done --pr https://github.com/o/r/pull/7',
-    'bun tools/clutch.ts issues --write',
-    'git add .clutch',
-    'git commit --quiet --message chore(tracker): mark CL-117 done',
+    'git add .clutch/issues',
+    'git commit --quiet --message chore(tracker): mark CL-117 done -- .clutch/issues',
     'git push origin HEAD',
   ]);
+  // The release regenerates the tracker on the default branch, never a PR.
+  expect(gh.calls).not.toContain('bun tools/clutch.ts issues --write');
 });
 
 const releaseLookup = (err: string) =>

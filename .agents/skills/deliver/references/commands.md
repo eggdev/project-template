@@ -11,8 +11,8 @@ its options, and so does `bun run pr --help`.
 | --------------------------------------------------------------------------------- | --------------------------------------------------- | ----------------------------------------------- |
 | `bun run clutch issues next [--stack]`                                            | You need the next unblocked issue.                  | Reading `TRACKER.md` by eye.                    |
 | `bun run clutch issues new --phase <P> --title <title> [--range CL-NNN..CL-NNN]` | You file a new issue, or a lane has a reserved range. | Picking the next id by hand.                    |
-| `bun run clutch issues set <id> <status> [--pr <url>]`                            | An issue starts, waits or goes to review.           | Editing frontmatter and the tracker by hand.    |
-| `bun run clutch issues --write`                                                   | `TRACKER.md` conflicts after a rebase.              | Resolving tracker conflicts line by line.       |
+| `bun run clutch issues set <id> <status> [--pr <url>]`                            | An issue starts, waits or goes to review.           | Editing frontmatter by hand.                    |
+| `bun run clutch issues --write`                                                   | You want to read the table locally. Do not commit it: the release writes it on `main`. | Reading every issue file.                       |
 | `bun run clutch worktree new <slug> [--issue <id>]`                               | You start a task beside other work in this repository. | `git worktree add`, copying env files and `bun install` by hand. |
 | `bun run clutch worktree list [--json]`                                           | You want each checkout's branch, issue, PR and dirty state. | `git worktree list` and matching branches to PRs by hand. |
 | `bun run clutch worktree rm <slug> [--force]`                                     | A task's checkout is done, or abandoned.            | Stopping its servers and `git worktree remove` by hand. |
@@ -79,7 +79,7 @@ changeset from the PR title, and the release workflow does the rest. See
 - A loop of `gh pr checks` or `sleep`. Use `pr wait`.
 - Digging in `gh run view --log`. Use `pr failures`.
 - `gh pr merge` or `gh stack merge`. Use `pr merge`, which handles stacks.
-- Fixing `TRACKER.md` conflicts by hand. Use `pr sync`, or `clutch issues --write`.
+- Committing `TRACKER.md` in a PR. The release writes it on `main`.
 - `gh api` writes to a ruleset. Use `clutch ruleset --apply`.
 - Guessing the next issue id. Use `clutch issues new`.
 

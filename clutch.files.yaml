@@ -117,6 +117,8 @@ files:
     rule: merge
   - path: .gitignore
     rule: merge
+  - path: .gitattributes
+    rule: merge
   - path: .claude/settings.json
     rule: merge
   - path: .codex/hooks.json

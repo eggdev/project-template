@@ -71,7 +71,7 @@
     "tools/recap/classify-primitives.ts": "It writes the PR recap block. It enforces no rule.",
     "tools/recap/upsert-recap-block.ts": "It writes the PR recap block. It enforces no rule.",
     ".agents/skills/setup-verification/references/journey-specification.md": "A journey header follows its format, and check-journeys quotes its path in a fix. It sets no rule.",
-    ".clutch/TRACKER.md": "clutch issues --write generates it from the issue files, and pr sync regenerates it when a rebase conflicts in it. It sets no rule.",
+    ".clutch/TRACKER.md": "The release workflow generates it on main from the issue files with clutch issues --write. A pull request never commits it. It sets no rule.",
     "CHANGELOG.md": "The release workflow writes it from the changesets, and tools/release/changeset.ts reads it to add a section. It sets no rule."
   }
 }
