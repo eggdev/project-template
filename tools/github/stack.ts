@@ -31,6 +31,23 @@ export function stackExtensionVersion(list: string) {
 export type OpenPr = { number: number; base: string };
 
 /**
+ * The open PRs above `head`, from the one just above it to the top. Each one's
+ * base is the head of the one below it. `gh stack link` needs the whole stack:
+ * linking only the PRs below would remove the ones above from it.
+ */
+export async function stackAbove(
+  head: string,
+  prWithBase: (branch: string) => Promise<{ number: number; head: string } | undefined>,
+  found: Array<number> = [],
+): Promise<Array<number>> {
+  if (found.length >= 20) {
+    throw new Error(`The stack is deeper than 20 PRs above ${head}. Check the PR bases.`);
+  }
+  const pr = await prWithBase(head);
+  return pr ? stackAbove(pr.head, prWithBase, [...found, pr.number]) : found;
+}
+
+/**
  * The open PRs under `base`, from the bottom of the stack up. Each one's head
  * is the base of the one above it. The chain ends at the default branch.
  */

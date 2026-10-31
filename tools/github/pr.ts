@@ -5,13 +5,21 @@ import { parseArgs } from 'node:util';
 import { openAsBot } from '@tools/github/bot-open';
 import { ready, recordForkPoint, sync } from '@tools/github/branch';
 import { failures, renderFailures } from '@tools/github/failures';
-import { defaultBranch, duration, must, prWithHead, realClock } from '@tools/github/github';
+import {
+  defaultBranch,
+  duration,
+  must,
+  prWithBase,
+  prWithHead,
+  realClock,
+} from '@tools/github/github';
 import type { Clock } from '@tools/github/github';
 import { merge } from '@tools/github/merge';
 import {
   ghStack,
   ghVersion,
   pinnedGh,
+  stackAbove,
   stackChain,
   stackExtensionVersion,
 } from '@tools/github/stack';
@@ -238,9 +246,11 @@ async function open(
   } else {
     await recordForkPoint(run, branch, base);
     const below = await stackChain(base, trunk, (head) => prWithHead(run, head));
+    // A PR in the middle keeps the PRs above it in the stack.
+    const above = await stackAbove(branch, (head) => prWithBase(run, head));
     await must(
       run,
-      ['gh', 'stack', 'link', ...below.map(String), String(opened.number), '--open'],
+      ['gh', 'stack', 'link', ...[...below, opened.number, ...above].map(String), '--open'],
       { inherit: true },
     );
   }

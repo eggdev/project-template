@@ -50,6 +50,23 @@ export async function prWithHead(run: Run, branch: string) {
   );
 }
 
+/** The open PR whose base is `branch`, the one stacked on it. */
+export async function prWithBase(run: Run, branch: string) {
+  const out = await must(run, [
+    'gh',
+    'pr',
+    'list',
+    '--state',
+    'open',
+    '--base',
+    branch,
+    '--json',
+    'number,headRefName',
+  ]);
+  const [found] = JSON.parse(out || '[]') as Array<{ number: number; headRefName: string }>;
+  return found && { number: found.number, head: found.headRefName };
+}
+
 /** Waits and tells the time. Tests pass a clock that never sleeps. */
 export type Clock = { sleep: (ms: number) => Promise<void>; now: () => number };
 
