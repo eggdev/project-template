@@ -108,8 +108,21 @@ on one base cannot form a linear stack, and they can conflict in generated
 files. To join such PRs, rebase the second branch onto the first one. Then run
 `open` for it again with the new base.
 
-Keep a stack to three open PRs or fewer. At three, ask the owner to merge the
-lower PRs before you add another one.
+### One approval round per batch
+
+A push to an approved PR drops the approval, because the ruleset dismisses
+stale reviews. So the owner approves a batch once:
+
+1. Before you ask the owner for approval, put your finished PRs in one stack
+   with `open --base`, so `gh stack` links them bottom to top. Each PR is green,
+   with 0 blocking findings and its done commit last.
+2. Ask the owner to approve every PR in the stack in one sitting.
+3. Run `bun run pr merge <top>`. It merges the whole stack, bottom up, in one
+   step.
+4. After the approval, never push to a PR unless GitHub reports it as `DIRTY`
+   (`pr status` shows the merge state). A `CLEAN` PR merges as it is, since the
+   ruleset does not require an up-to-date branch. A `DIRTY` PR needs
+   `pr sync`, and then a new approval.
 
 ## Merge
 
